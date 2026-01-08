@@ -1,0 +1,17 @@
+services:
+  va-backend:
+    build: ./server
+    container_name: va-backend
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server:/app
+    command: nodemon index.js
+
+  va-frontend:
+    build: ./frontend
+    container_name: va-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_BACKEND_URL=http://va-backend:4000

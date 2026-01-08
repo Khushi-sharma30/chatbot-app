@@ -1,0 +1,20 @@
+{
+  "name": "virtual-assistance",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx concurrently \"npm run start-server\" \"npm run start-frontend\"",
+    "start-server": "cd server && npm run dev",
+    "start-frontend": "cd frontend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.11"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
+    "node-fetch": "^2.7.0",
+    "three": "^0.181.1"
+  }
+}
