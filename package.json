@@ -15,6 +15,8 @@
     "@react-three/fiber": "^9.4.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
     "node-fetch": "^2.7.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "three": "^0.181.1"
   }
 }

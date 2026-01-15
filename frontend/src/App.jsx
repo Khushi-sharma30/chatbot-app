@@ -133,7 +133,7 @@ export default function App() {
           <button onClick={handleVoiceInput}>🎤 Speak</button>
         </div>
 
-        <div className="status">{speaking ? "Khushi is speaking..." : "Idle"}</div>
+        <div className="status">{speaking ? "CMS Agent is speaking..." : "Idle"}</div>
       </div>
     </div>
   );
