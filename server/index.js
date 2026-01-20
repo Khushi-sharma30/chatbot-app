@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
-import OpenAI from "openai";
 import dotenv from "dotenv";
+import OpenAI from "openai";
 
 dotenv.config();
 
@@ -9,95 +9,126 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+/**
+ * ================================
+ * Azure OpenAI Client
+ * ================================
+ */
+const client = new OpenAI({
+  apiKey: process.env.AZURE_API_KEY,
+  baseURL: `${process.env.AZURE_ENDPOINT}/openai/deployments/${process.env.AZURE_DEPLOYMENT_NAME}`,
+  defaultQuery: { "api-version": process.env.AZURE_API_VERSION },
+  defaultHeaders: {
+    "api-key": process.env.AZURE_API_KEY,
+  },
 });
 
-// ---------------- System Prompt ----------------
+/**
+ * ================================
+ * System Prompt
+ * ================================
+ */
 const systemPrompt = `
-You are CMS Assist, a friendly AI assistant for CMS Distribution (https://www.cmsdistribution.com/). 
+You are CMS Assist, a friendly AI assistant for CMS Distribution (https://www.cmsdistribution.com/).
 CMS Distribution is a company — never treat it as a content management system.
 
-Formatting instructions:
-- Always structure responses like this:
+Formatting rules:
+- Always respond in this structure:
 
 You said:
 <repeat user question>
 
 ChatGPT said:
-<answer, explanations, or code>
+<your response>
 
-- Use proper Markdown code blocks with language hints for all code:
-\`\`\`python
-# code here
-\`\`\`
-- Provide explanations before or after the code.
-- Include bullet points for features, steps, or key points.
-- Suggest next steps if relevant.
-- Keep responses clear, readable, and copy-paste friendly.
-- Always include the company website link at the end.
-
-General behavior:
-- Always answer as CMS Assist for CMS Distribution.
-- Match the user’s tone.
-- Ask one clarifying question if needed.
-- Prioritize actionable, helpful advice.
+- Use Markdown
+- Use bullet points where helpful
+- Include explanations before or after code
+- Always include the website link at the end
+- Be clear, professional, and helpful
 `;
 
-// ---------------- In-Memory Conversation Store ----------------
-const conversations = {}; // Use database for production
+/**
+ * ================================
+ * In-Memory Conversations
+ * ================================
+ */
+const conversations = {};
 
-// ---------------- AI Reply Endpoint ----------------
+/**
+ * ================================
+ * AI Reply Endpoint
+ * ================================
+ */
 app.post("/api/ai/reply", async (req, res) => {
   const { userId, message } = req.body;
-  if (!message || !userId) {
-    return res.status(400).json({ error: "Missing message or userId" });
+
+  if (!userId || !message) {
+    return res.status(400).json({
+      reply: "CMS Assist: Missing userId or message.",
+    });
   }
 
-  // Initialize conversation for first-time users
   if (!conversations[userId]) {
     conversations[userId] = [
       { role: "system", content: systemPrompt },
-      {
-        role: "system",
-        content: "Always answer as CMS Assist for CMS Distribution. Never treat CMS Distribution as generic CMS."
-      }
     ];
   }
 
-  // Prepend context to the user's message
-  const userMessage = `Important context: CMS Distribution is the company I work for (https://www.cmsdistribution.com/). User asked: ${message}`;
-  conversations[userId].push({ role: "user", content: userMessage });
+  conversations[userId].push({
+    role: "user",
+    content: message,
+  });
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await client.chat.completions.create({
+      model: process.env.AZURE_DEPLOYMENT_NAME, // REQUIRED for Azure
       messages: conversations[userId],
+      temperature: 0.7,
+      max_tokens: 500,
     });
 
-    const reply =
-      completion?.choices?.[0]?.message?.content ||
-      "Sorry, I couldn't generate a reply.";
+    if (!completion.choices || completion.choices.length === 0) {
+      throw new Error("No response from Azure OpenAI");
+    }
 
-    // Add assistant reply to conversation
-    conversations[userId].push({ role: "assistant", content: reply });
+    const reply = completion.choices[0].message.content;
 
-    // Send formatted reply to frontend
+    conversations[userId].push({
+      role: "assistant",
+      content: reply,
+    });
+
     res.json({
-      reply: `${reply} Learn more at https://www.cmsdistribution.com/`,
+      reply: `${reply}\n\nLearn more at https://www.cmsdistribution.com/`,
     });
+
   } catch (err) {
-    console.error(err);
+    console.error("🔥 AZURE OPENAI ERROR 🔥");
+
+    if (err.response) {
+      console.error("Status:", err.response.status);
+      console.error(
+        "Response:",
+        JSON.stringify(err.response.data, null, 2)
+      );
+    } else {
+      console.error(err);
+    }
+
     res.status(500).json({
       reply:
-        "CMS Assist: Something went wrong. Learn more at https://www.cmsdistribution.com/",
+        "CMS Assist: Sorry, something went wrong while generating the response.",
     });
   }
 });
 
-// ---------------- Server ----------------
+/**
+ * ================================
+ * Server Start
+ * ================================
+ */
 const PORT = 4000;
 app.listen(PORT, () => {
-  console.log(`CMS Assist backend running on http://localhost:${PORT}`);
+  console.log(`✅ CMS Assist backend running on http://localhost:${PORT}`);
 });
