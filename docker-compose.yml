@@ -1,17 +1,19 @@
+version: "3.8"
 services:
-  va-backend:
-    build: ./server
-    container_name: va-backend
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./server:/app
-    command: nodemon index.js
-
-  va-frontend:
-    build: ./frontend
-    container_name: va-frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
     ports:
       - "3000:80"
-    environment:
-      - REACT_APP_BACKEND_URL=http://host.docker.internal:4000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./backend/.env
